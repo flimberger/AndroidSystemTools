@@ -1,0 +1,394 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+# Based of the builtin Java.tmLanguage converted by Sublime Text 3
+# https://github.com/JetBrains/android/blob/master/android/src/com/android/tools/idea/lang/aidl/grammer/Aidl.bnf
+name: AIDL
+file_extensions:
+  - aidl
+scope: source.aidl
+
+contexts:
+  main:
+    - match: '^\s*(package)\b(?:\s*([^ ;$]+)\s*(;)?)?'
+      scope: meta.package.aidl
+      captures:
+        1: keyword.other.package.aidl
+        2: storage.modifier.package.aidl
+        3: punctuation.terminator.aidl
+    - match: '^\s*(import)\b(?:\s*([^ ;$]+)\s*(;)?)?'
+      scope: meta.import.aidl
+      captures:
+        1: keyword.other.import.aidl
+        2: storage.modifier.import.aidl
+        3: punctuation.terminator.aidl
+    - include: code
+
+  all-types:
+    - include: primitive-arrays
+    - include: primitive-types
+    - include: object-types
+
+  annotations:
+    - match: '(@[^ (]+)(\()'
+      captures:
+        1: storage.type.annotation.aidl
+        2: punctuation.definition.annotation-arguments.begin.aidl
+      push:
+        - meta_scope: meta.declaration.annotation.aidl
+        - match: (\))
+          captures:
+            1: punctuation.definition.annotation-arguments.end.aidl
+          pop: true
+        - match: (\w*)\s*(=)
+          captures:
+            1: constant.other.key.aidl
+            2: keyword.operator.assignment.aidl
+        - include: code
+        - match: ","
+          scope: punctuation.seperator.property.aidl
+    - match: '@\w*'
+      scope: storage.type.annotation.aidl
+
+  anonymous-classes-and-new:
+    - match: \bnew\b
+      captures:
+        0: keyword.control.new.aidl
+      push:
+        - match: '(?<=\)|\])(?!\s*{)|(?<=})|(?=;)'
+          pop: true
+        - match: '(\w+)\s*(?=\[)'
+          captures:
+            1: storage.type.aidl
+          push:
+            - match: '}|(?=;|\))'
+              pop: true
+            - match: '\['
+              push:
+                - match: '\]'
+                  pop: true
+                - include: code
+            - match: "{"
+              push:
+                - match: "(?=})"
+                  pop: true
+                - include: code
+        - match: (?=\w.*\()
+          push:
+            - match: (?<=\))
+              pop: true
+            - include: object-types
+            - match: \(
+              captures:
+                1: storage.type.aidl
+              push:
+                - match: \)
+                  pop: true
+                - include: code
+        - match: "{"
+          push:
+            - meta_scope: meta.inner-class.aidl
+            - match: "}"
+              pop: true
+            - include: class-body
+
+  assertions:
+    - match: \b(assert)\s
+      captures:
+        1: keyword.control.assert.aidl
+      push:
+        - meta_scope: meta.declaration.assertion.aidl
+        - match: $
+          pop: true
+        - match: ":"
+          scope: keyword.operator.assert.expression-seperator.aidl
+        - include: code
+
+  class:
+    - match: '(?=\w?[\w\s]*(?:class|(?:@)?interface|enum)\s+\w+)'
+      push:
+        - meta_scope: meta.class.aidl
+        - match: "}"
+          captures:
+            0: punctuation.section.class.end.aidl
+          pop: true
+        - include: storage-modifiers
+        - include: comments
+        - match: (class|(?:@)?interface|enum)\s+(\w+)
+          scope: meta.class.identifier.aidl
+          captures:
+            1: storage.modifier.aidl
+            2: entity.name.type.class.aidl
+        - match: extends
+          captures:
+            0: storage.modifier.extends.aidl
+          push:
+            - meta_scope: meta.definition.class.inherited.classes.aidl
+            - match: "(?={|implements)"
+              pop: true
+            - include: object-types-inherited
+            - include: comments
+        - match: (implements)\s
+          captures:
+            1: storage.modifier.implements.aidl
+          push:
+            - meta_scope: meta.definition.class.implemented.interfaces.aidl
+            - match: '(?=\s*extends|\{)'
+              pop: true
+            - include: object-types-inherited
+            - include: comments
+        - match: "{"
+          push:
+            - meta_scope: meta.class.body.aidl
+            - match: "(?=})"
+              pop: true
+            - include: class-body
+
+  class-body:
+    - include: comments
+    - include: class
+    - include: enums
+    - include: methods
+    - include: annotations
+    - include: storage-modifiers
+    - include: code
+
+  code:
+    - include: comments
+    - include: class
+    - match: "{"
+      push:
+        - match: "}"
+          pop: true
+        - include: code
+    - include: assertions
+    - include: parens
+    - include: constants-and-special-vars
+    - include: anonymous-classes-and-new
+    - include: keywords
+    - include: storage-modifiers
+    - include: strings
+    - include: all-types
+
+  comments:
+    - match: /\*\*/
+      scope: comment.block.empty.aidl
+      captures:
+        0: punctuation.definition.comment.aidl
+    - include: scope:text.html.aidldoc
+    - include: comments-inline
+
+  comments-inline:
+    - match: /\*
+      captures:
+        0: punctuation.definition.comment.aidl
+      push:
+        - meta_scope: comment.block.aidl
+        - match: \*/
+          captures:
+            0: punctuation.definition.comment.aidl
+          pop: true
+    - match: \s*((//).*$\n?)
+      captures:
+        1: comment.line.double-slash.aidl
+        2: punctuation.definition.comment.aidl
+
+  constants-and-special-vars:
+    - match: \b(true|false|null)\b
+      scope: constant.language.aidl
+    - match: \b(this|super)\b
+      scope: variable.language.aidl
+    - match: '\b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)([LlFfUuDd]|UL|ul)?\b'
+      scope: constant.numeric.aidl
+    - match: '(\.)?\b([A-Z][A-Z0-9_]+)(?!<|\.class|\s*\w+\s*=)\b'
+      scope: constant.other.aidl
+      captures:
+        1: keyword.operator.dereference.aidl
+
+  enums:
+    - match: '^(?=\s*[A-Z0-9_]+\s*({|\(|,))'
+      push:
+        - match: "(?=;|})"
+          pop: true
+        - match: \w+
+          captures:
+            0: constant.other.enum.aidl
+          push:
+            - meta_scope: meta.enum.aidl
+            - match: "(?=,|;|})"
+              pop: true
+            - include: parens
+            - match: "{"
+              push:
+                - match: "}"
+                  pop: true
+                - include: class-body
+
+  keywords:
+    - match: \b(try|catch|finally|throw)\b
+      scope: keyword.control.catch-exception.aidl
+    - match: '\?|:'
+      scope: keyword.control.aidl
+    - match: \b(return|break|case|continue|default|do|while|for|switch|if|else)\b
+      scope: keyword.control.aidl
+    - match: \b(instanceof)\b
+      scope: keyword.operator.aidl
+    - match: (==|!=|<=|>=|<>|<|>)
+      scope: keyword.operator.comparison.aidl
+    - match: (=)
+      scope: keyword.operator.assignment.aidl
+    - match: (\-\-|\+\+)
+      scope: keyword.operator.increment-decrement.aidl
+    - match: (\-|\+|\*|\/|%)
+      scope: keyword.operator.arithmetic.aidl
+    - match: (!|&&|\|\|)
+      scope: keyword.operator.logical.aidl
+    - match: (?<=\S)\.(?=\S)
+      scope: keyword.operator.dereference.aidl
+    - match: ;
+      scope: punctuation.terminator.aidl
+    - match: \b(flattenable|in|oneway|out|parcelable|rpc)\b
+      scope: keyword.control.aidl
+
+  methods:
+    - match: '(?!new)(?=\w.*\s+)(?=[^=]+\()'
+      push:
+        - meta_scope: meta.method.aidl
+        - match: "}|(?=;)"
+          pop: true
+        - include: storage-modifiers
+        - match: (\w+)\s*\(
+          captures:
+            1: entity.name.function.aidl
+          push:
+            - meta_scope: meta.method.identifier.aidl
+            - match: \)
+              pop: true
+            - include: parameters
+        - match: (?=\w.*\s+\w+\s*\()
+          push:
+            - meta_scope: meta.method.return-type.aidl
+            - match: (?=\w+\s*\()
+              pop: true
+            - include: all-types
+        - include: throws
+        - match: "{"
+          push:
+            - meta_scope: meta.method.body.aidl
+            - match: "(?=})"
+              pop: true
+            - include: code
+
+  object-types:
+    - match: '\b((?:[a-z]\w*\.)*[A-Z]+\w*)<'
+      push:
+        - meta_scope: storage.type.generic.aidl
+        - match: '>|[^\w\s,\?<\[\]]'
+          pop: true
+        - include: object-types
+        - match: <
+          comment: This is just to support <>'s with no actual type prefix
+          push:
+            - meta_scope: storage.type.generic.aidl
+            - match: '>|[^\w\s,\[\]<]'
+              pop: true
+    - match: '\b((?:[a-z]\w*\.)*[A-Z]+\w*)(?=\[)'
+      push:
+        - meta_scope: storage.type.object.array.aidl
+        - match: '(?=[^\]\s])'
+          pop: true
+        - match: '\['
+          push:
+            - match: '\]'
+              pop: true
+            - include: code
+    - match: '\b(?:[a-z]\w*(\.))*[A-Z]+\w*\b'
+      scope: storage.type.aidl
+      captures:
+        1: keyword.operator.dereference.aidl
+
+  object-types-inherited:
+    - match: '\b((?:[a-z]\w*\.)*[A-Z]+\w*)<'
+      push:
+        - meta_scope: entity.other.inherited-class.aidl
+        - match: '>|[^\w\s,<]'
+          pop: true
+        - include: object-types
+        - match: <
+          comment: This is just to support <>'s with no actual type prefix
+          push:
+            - meta_scope: storage.type.generic.aidl
+            - match: '>|[^\w\s,<]'
+              pop: true
+    - match: '\b(?:[a-z]\w*(\.))*[A-Z]+\w*'
+      scope: entity.other.inherited-class.aidl
+      captures:
+        1: keyword.operator.dereference.aidl
+
+  parameters:
+    - match: final
+      scope: storage.modifier.aidl
+    - include: primitive-arrays
+    - include: primitive-types
+    - include: object-types
+    - match: \w+
+      scope: variable.parameter.aidl
+
+  parens:
+    - match: \(
+      push:
+        - match: \)
+          pop: true
+        - include: code
+
+  primitive-arrays:
+    - match: '\b(?:void|boolean|byte|char|short|int|float|long|double)(\[\])*\b'
+      scope: storage.type.primitive.array.aidl
+
+  primitive-types:
+    - match: \b(?:void|boolean|byte|char|short|int|float|long|double)\b
+      scope: storage.type.primitive.aidl
+
+  storage-modifiers:
+    - match: \b(public|private|protected|static|final|native|synchronized|abstract|threadsafe|transient)\b
+      captures:
+        1: storage.modifier.aidl
+
+  strings:
+    - match: '"'
+      captures:
+        0: punctuation.definition.string.begin.aidl
+      push:
+        - meta_scope: string.quoted.double.aidl
+        - match: '"'
+          captures:
+            0: punctuation.definition.string.end.aidl
+          pop: true
+        - match: \\.
+          scope: constant.character.escape.aidl
+    - match: "'"
+      captures:
+        0: punctuation.definition.string.begin.aidl
+      push:
+        - meta_scope: string.quoted.single.aidl
+        - match: "'"
+          captures:
+            0: punctuation.definition.string.end.aidl
+          pop: true
+        - match: \\.
+          scope: constant.character.escape.aidl
+
+  throws:
+    - match: throws
+      captures:
+        0: storage.modifier.aidl
+      push:
+        - meta_scope: meta.throwables.aidl
+        - match: "(?={|;)"
+          pop: true
+        - include: object-types
+
+  values:
+    - include: strings
+    - include: object-types
+    - include: constants-and-special-vars

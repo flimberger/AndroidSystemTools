@@ -1,0 +1,49 @@
+%YAML 1.2
+---
+name: Android Blueprint
+file_extensions: [bp]
+scope: source.bp
+
+contexts:
+  main:
+    - match: ^(\w+)
+      captures:
+        1: keyword.control.bp
+    - match: \{
+      scope: punctuation.section.mapping.begin.bp
+      push:
+        - match: \}
+          pop: true
+        - include: comments
+        - include: properties
+    - include: comments
+    - include: lists
+
+  comments:
+    - match: //.*
+      scope: comment.line.bp
+    - match: /\*
+      push:
+        - meta_scope: comment.block.bp
+        - match: \*/
+          pop: true
+
+  lists:
+    - match: \[
+      scope: punctuation.section.sequence.begin.bp
+      push:
+        - match: \]
+          pop: true
+        - include: comments
+        - include: strings
+
+  properties:
+    - match: "(\\w+)\\s*:"
+      captures:
+        1: keyword.control.bp
+    - include: lists
+    - include: strings
+
+  strings:
+    - match: \".*\"
+      scope: string.quoted.double.bp

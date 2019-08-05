@@ -1,0 +1,40 @@
+%YAML 1.2
+---
+name: Android init
+file_extensions: [rc]
+scope: source.rc
+
+contexts:
+  main:
+    - match: ^(on|service)\b
+      scope: keyword.control.rc
+    - match: \b(chmod|chown|class|class_reset|class_start|class_stop|copy|critical|exec|exec_start|export|group|mkdir|mount|restorecon|restorecon_recursive|rm|setrlimit|start|symlink|trigger|user|write)\b
+      scope: keyword.control.rc
+    - match: ^import\b
+      scope: keyword.control.import
+    - match: \#.*$
+      scope: comment.line
+    - match: '"'
+      push: string
+    - match: \b(\d+)\b
+      scope: constant.numeric.integer
+    - match: \$\{
+      push: variable
+    - match: \b(property)\:([a-zA-Z][a-zA-Z0-9_.]*)(=)(\S+)
+      captures:
+        1: keyword.control.rc
+        2: variable.parameter
+        3: keyword.operator.assignment
+        4: string.unquoted
+
+  string:
+    - meta_scope: string.quoted.double.rc
+    - match: \\.
+      scope: constant.character.escape.rc
+    - match: '"'
+      pop: true
+
+  variable:
+    - meta_scope: variable.other
+    - match: \}
+      pop: true
